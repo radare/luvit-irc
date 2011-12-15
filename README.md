@@ -6,6 +6,11 @@ Documentation
 -------------
 See test.lua for more information
 
+TODO
+----
+* Add support for SSL
+* Luvit still not supports dns resolutions
+
 Example
 -------
 	local host = "ip-of-irc-server"

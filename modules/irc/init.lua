@@ -79,17 +79,19 @@ function IRC.new ()
 		sock:on ("data", function (line)
 			-- hack for newlines
 			local lines = split (line, "\r\n")
-if not lines then lines = {line} end
+			if not lines then lines = {line} end
 			for i=1,#lines do
 			x = lines[i]
-p(x)
 			-- if nl then x = x:sub (0, nl-1) end
 			local w = split (x, " ")
+			p(w)
 			-- p (w[1], w[2], w[3])
-			if w[0] == "PING" then
+			if w[1] == "PING" then
 				local s = x:sub(5)
 				self:emit ("ping", s)
 				sock:write ("PONG "..s.." :"..s.."\n")
+			elseif w[1] == "ERROR" then -- server message
+				p("WTF I CAN HAZ AN ERROR")
 			elseif w[2] == "372" then -- server message
 				local msg = "" for i=4,#w do msg = msg..w[i].." " end
 				msg = msg:sub (2)
