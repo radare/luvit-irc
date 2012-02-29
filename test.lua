@@ -9,8 +9,32 @@ local host = "irc.freenode.net"
 local port = 6667
 local c = nil
 local nick = "lubot3"
+local doEcho = false
+local useGpg = false
 
-host = "94.125.182.252" -- freenode
+function gpgDecrypt(user, msg, fn)
+	local cp = require ("childprocess")
+	--local g = cp.spawn("g", {"-e","pancake"}, {})
+	local string = require ("string")
+	-- first 11 chars are always the same?
+	msg = string.gsub(msg,'\'','\\\'')
+	local g = cp.spawn("/bin/sh", {"-c", "echo '"..msg.."' | g -O | g -d "})
+	--g.stdin:write (line)
+--g.stdin:close()
+	g.stdout:on('data', function (ch)
+			p("DEC_DATA : "..ch)
+--			c:privmsg (channel, ch)
+fn (ch)
+			end)
+	g.stdout:on('exit', function (c,s)
+			p("PRIVMSG")
+			--	c:privmsg (channel, line)
+			end)
+--c:privmsg (channel, line)
+	
+end
+
+-- host = "94.125.182.252" -- freenode
 -- host = "173.225.186.74" -- oftc
 -- host = "194.149.75.80" -- hispano
 
@@ -69,7 +93,15 @@ c:on ("privmsg", function (user, msg)
 				end
 			end
 		else
-			c:privmsg (user, msg) -- echo
+			p ("GOECHO MSG "..msg)
+			if doEcho then
+				c:privmsg (user, msg) -- echo
+			else
+				p("Deciphering "..msg)
+				gpgDecrypt (user, msg, function (x)
+					p("msg",x)
+				end)
+			end
 		end
 	end)
 c:on ("quit", function (x)
@@ -91,6 +123,7 @@ c:on ("servermsg", function (host, msg)
 	end)
 
 function irc_cmd (line)
+p("---")
 	if line == "/quit" then
 		c:quit ()
 	elseif line:sub (1, 6) == "/join " then
@@ -108,12 +141,33 @@ function irc_cmd (line)
 	elseif line:sub (1, 1) == "!" then
 		c:write (line:sub (2).."\n")
 	else
-		c:privmsg (channel, line)
+		if useGpg then
+			local cp = require ("childprocess")
+			--local g = cp.spawn("g", {"-e","pancake"}, {})
+			local string = require ("string")
+-- first 11 chars are always the same?
+			line = string.gsub(line,'\'','\\\'')
+			local g = cp.spawn("/bin/sh", {"-c", "echo '"..line.."'|g -e pancake | g -o"})
+			--g.stdin:write (line)
+			--g.stdin:close()
+			g.stdout:on('data', function (ch)
+				p("DATA "..channel.. ": "..ch)
+				c:privmsg (channel, ch)
+			end)
+			g.stdout:on('exit', function (c,s)
+				p("PRIVMSG")
+			--	c:privmsg (channel, line)
+			end)
+			--c:privmsg (channel, line)
+		else
+			c:privmsg (channel, line)
+		end
 	end
 end
 
+p("connecting to "..host)
 c:connect (host, port, nick)
-process.stdin:read_start ()
+process.stdin:readStart ()
 process.stdin:on ("data", function (line)
 	irc_cmd (line:sub (1, #line-1))
 end)
