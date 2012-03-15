@@ -4,9 +4,8 @@
 
 local dns = require ('dns')
 local TCP = require ('uv').Tcp
-local TLS = require ('tls')
 local table = require ('table')
-
+local TLS = require ('tls', false)
 local IRC = {}
 
 -- copypasta
@@ -83,6 +82,9 @@ function IRC.new ()
 		dns.resolve4(host, function (err, addresses)
 			host = addresses[1]
 			if options['ssl'] then
+				if not TLS then
+					error ("luvit cannot require ('tls')")
+				end
 				TLS.connect (port, host, {}, function (err, client)
 					self.sock = client
 					self:connect2 (client)
