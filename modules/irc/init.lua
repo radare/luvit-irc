@@ -1,8 +1,10 @@
 -- author -- pancake@nopcode.org --
 -- TODO: use emitter api
+-- TODO: check SSL certificate
 
 local dns = require ('dns')
 local TCP = require ('uv').Tcp
+local TLS = require ('tls')
 local table = require ('table')
 
 local IRC = {}
@@ -68,22 +70,47 @@ function IRC.new ()
 		end)
 	end
 	client.close = function (self)
-		self.sock:close ()
+		if self.sock.socket then
+			self.sock.socket:close () -- SSL
+		else
+			self.sock:close () -- TCP
+		end
 	end
 	client.names = function (self, chan)
 		self.sock:write ("NAMES "..chan.."\n")
 	end
-	client.connect = function (self, host, port, nick, fun)
+	client.connect = function (self, host, port, nick, options, fun)
 		dns.resolve4(host, function (err, addresses)
 			host = addresses[1]
-			local sock = TCP:new ()
-			self.sock = sock
-			sock:connect (host, port)
-			sock:on ("data", function (line)
-				-- hack for newlines
-				local lines = split (line, "\r\n")
-				if not lines then lines = {line} end
-				for i=1,#lines do
+			if options['ssl'] then
+				TLS.connect (port, host, {}, function (err, client)
+					self.sock = client
+					self:connect2 (client)
+					client:write ("NICK "..nick.."\n")
+					client:write ("USER "..nick.." "..nick.." "..host.." :"..nick.."\n")
+				end)
+			else
+				local sock = TCP:new ()
+				self.sock = sock
+				sock:connect (host, port)
+				self:connect2 (sock)
+				sock:on ("connect", function ()
+					sock:readStart ()
+					p ('sock:on(complete)')
+					-- auth sock
+					sock:write ("NICK "..nick.."\n")
+					sock:write ("USER "..nick.." "..nick.." "..host.." :"..nick.."\n")
+					self:emit ("connected", x)
+				end)
+			end
+		end)
+	end
+	client.connect2 = function (self,sock)
+		sock:on ("data", function (line)
+			-- hack for newlines
+			local lines = split (line, "\r\n")
+			if not lines then lines = {line} end
+			for i = 1, #lines do
 				x = lines[i]
 				-- if nl then x = x:sub (0, nl-1) end
 				local w = split (x, " ")
@@ -129,21 +156,12 @@ function IRC.new ()
 						self:emit ("privmsg", nick, msg)
 					end
 				end
-				end
+			end
 			self:emit ("data", x)
 --
-			end)
-			sock:on ("connect", function ()
-				sock:readStart ()
-				p ('sock:on(complete)')
-				-- auth sock
-				sock:write ("NICK "..nick.."\n")
-				sock:write ("USER "..nick.." "..nick.." "..host.." :"..nick.."\n")
-				self:emit ("connected", x)
-			end)
-			sock:on ("error", function (x)
-				self:emit ("error", x)
-			end)
+		end)
+		sock:on ("error", function (x)
+			self:emit ("error", x)
 		end)
 	end
 	return client

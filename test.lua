@@ -1,12 +1,12 @@
 #!/usr/bin/env luvit
 -- TODO: use getopt
--- TODO: support dns
 -- TODO: use prompt and autocompletion
 
 local IRC = require ('irc')
 
 local host = "irc.freenode.net"
 local port = 6667
+local ssl = false
 local c = nil
 local nick = "lubot3"
 local doEcho = false
@@ -166,7 +166,7 @@ p("---")
 end
 
 p("connecting to "..host)
-c:connect (host, port, nick)
+c:connect (host, port, nick, {ssl=ssl})
 process.stdin:readStart ()
 process.stdin:on ("data", function (line)
 	irc_cmd (line:sub (1, #line-1))
