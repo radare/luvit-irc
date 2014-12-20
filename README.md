@@ -1,6 +1,9 @@
 luvit-irc
 =========
 IRC client module for luvit
+Features:
+* SSL Support
+* SASL Support
 
 Documentation
 -------------
@@ -8,7 +11,7 @@ See test.lua for more information
 
 TODO
 ----
-* Add support for SSL
+* Modularize server handlers
 
 Example
 -------
