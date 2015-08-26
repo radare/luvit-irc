@@ -1,1 +1,1 @@
-return require ('irc')
+exports.irc = require ('./libs/irc').irc

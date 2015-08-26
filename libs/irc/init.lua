@@ -110,15 +110,19 @@ end
 
 function IRC:connect(host, port, user, nick, options)
   dns.resolve4(host, function (err, addresses)
-    host = addresses[1]
+    host = addresses[1].address
     if options['ssl'] then
       if not TLS then
         error ("luvit cannot require ('tls')")
       end
-      TLS.connect (port, host, {}, function (err, client)
-        self.sock = client
-        self:_handle(client, options)
+      local sockopts = {port=port, host=host}
+      self.sock = TLS.connect (sockopts)
+      self.sock:on('secureConnection', function (err)
+        self:_handle(self.sock, options)
         self:_fin_connect(user, nick, host, options)
+      end)
+      self.sock:on('error', function (err)
+        p('TLS socket error', err)
       end)
     else
       local sock = TCP:new ()
@@ -213,9 +217,9 @@ function IRC:_handle(sock, options)
     end
   end)
   sock:on("error", function (x)
+    p('sock error')
     self:emit("error", x)
   end)
 end
 
-
-return IRC
+exports.irc = IRC
